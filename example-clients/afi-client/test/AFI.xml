@@ -1,0 +1,24 @@
+<testcase name="AFI">
+    <test name="SandboxL2Inject">
+        <inject_packet name="">
+            <dst_mac val="33:22:0a:2e:ff:f1"/>
+            <src_mac val="32:26:0A:2E:aa:F1"/>
+            <ether_type val="ETH_P_IP"/> <!-- 0x0800 -->
+            <ether_payload val="">
+            <!--
+            Src IP : 103.30.10.1
+            Dst IP : 103.30.10.3
+            -->
+            "4500 0054 dacc 4000 4001 7d9c"
+            "671e 0a01 671e 0a03" 
+            "0800 5cba 492b 3942 ee7c 5658 0000"
+            "0000 0a30 0b00 0000 0000 1011 1213 1415"
+            "1617 1819 1a1b 1c1d 1e1f 2021 2223 2425"
+            "2627 2829 2a2b 2c2d 2e2f 3031 3233 3435"
+            "3637");
+            </ether_payload>
+        </inject_packet>
+        <expect_packet name="">
+        </expect_packet>
+    </test>
+</testcase>

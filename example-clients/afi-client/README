@@ -1,0 +1,104 @@
+#
+# README 
+#
+# Advanced Forwarding Interface : AFI client examples
+#
+# Created by Sandesh Kumar Sodhi, January 2017
+# Copyright (c) [2017] Juniper Networks, Inc. All rights reserved.
+#
+# All rights reserved.
+#
+# Notice and Disclaimer: This code is licensed to you under the Apache
+# License 2.0 (the "License"). You may not use this code except in compliance
+# with the License. This code is not an official Juniper product. You can
+# obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+#
+# Third-Party Code: This code may depend on other components under separate
+# copyright notice and license terms. Your use of the source code for those
+# components is subject to the terms and conditions of the respective license
+# as noted in the Third-Party source code file.
+#
+
+AFI Example Client
+******************
+
+Compilation Steps
+=================
+cd afi/example-clients/afi-client
+make
+
+
+Running the example client
+==========================
+cd afi/example-clients/afi-client
+./run-afi-client <afi-server address> <afi hostpath address>
+
+E.g.
+./run-afi-client 128.0.0.16:50051 128.0.0.16:9002
+
+
+Example run
+==========================
+
+This example run build following forwarding path topology
+ 
+  |                                        | 
+  |                                        | 
+  |                /\                      | 
+  |               /  \                     | 
+  o------------->/ R1-\---->[EthEncap]---->o
+  |p2           /______\                 p4| 
+  |           Routing Table                | 
+  |         R1 = 103.30.40.0/24            |
+  |                                        | 
+  |                                        |
+ 
+root@495874a2ed47:~/afi/example-clients/afi-client# ./run-afi-client 128.0.0.16:50051 128.0.0.16:9002
+D0425 21:24:10.218603225   13998 ev_posix.c:101]             Using polling engine: poll
+
+
+        AFI Client
+        ==========
+        AFI server address: 128.0.0.16:50051
+        AFI hostpath address: 128.0.0.16:9002
+        Enter 'help' to display list of available commands
+
+
+____AFIClient____ > open-sb green 8
+Opening Sandbox
+Got Sandbox handle!
+InputPorts:
+index: 0 port name: p0 token: 1
+index: 1 port name: p1 token: 2
+index: 2 port name: p2 token: 3
+index: 3 port name: p3 token: 4
+index: 4 port name: p4 token: 5
+index: 5 port name: p5 token: 6
+index: 6 port name: p6 token: 7
+index: 7 port name: p7 token: 8
+OutputPorts:
+index: 0 port name: p0 token: 10
+index: 1 port name: p1 token: 11
+index: 2 port name: p2 token: 12
+index: 3 port name: p3 token: 13
+index: 4 port name: p4 token: 14
+index: 5 port name: p5 token: 15
+index: 6 port name: p6 token: 16
+index: 7 port name: p7 token: 17
+index: 8 port name: punt token: 18
+____AFIClient____ > add-ether-encap 32:26:0a:2e:aa:f4 32:26:0a:2e:cc:f3 0 0 14
+Adding ether encap node
+Ether encap nexthop token: 19
+____AFIClient____ >
+____AFIClient____ >
+____AFIClient____ > create-rtt rtt1 18
+Creating routing table...
+Route table node token: 20
+Route table node token: 20
+____AFIClient____ > add-route 20 103.30.40.0/24 19
+Adding route...
+Adding route 103.30.40.0/24 ---> Node token 19
+____AFIClient____ > set-input-port-next-node 2 20
+Attaching next token to input port
+____AFIClient____ >
+
