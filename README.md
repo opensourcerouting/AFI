@@ -1,3 +1,5 @@
+##### Note: Use of this software is governed by an Apache 2.0 license, and can be found above in the “LICENSE” file.
+
 AFI (Advanced Forwarding Interface)
 ===================================
 Packet forwarding, at its core, is a sequence of operations executed by a packet forwarding engine (PFE). The packet forwarding engine, when given an input packet, performs this sequence of operations on the packet. Each of these operations can be represented by a node in a graph of potential packet forwarding operations. When packet is given to packet forwarding engine, it executes the operations in the graph that match the packet. Advanced Forwarding Interface (AFI) provides third party developers with ability to control and manage a section of forwarding path graph. 
@@ -5,7 +7,7 @@ Packet forwarding, at its core, is a sequence of operations executed by a packet
 AFI views a forwarding path as a collection of connected nodes in a hybrid graph. AFI provides clients with the ability to program a section of the forwarding path 
 via a small virtual container called a sandbox.  Using AFI APIs, AFI client can create and manage forwarding paths inside a forwarding sandbox. 
 
-Please read '[**AFI Introduction**](./docs/AFI.pdf)' document for a a quick overview of AFI. Details of AFI APIs can be found in '[**Doxygen Documentation**](https://juniper.github.io/AFI/doxygen/html/index.html)'. 
+Please read '[**AFI Introduction**](./docs/AFI.pdf)' document for a quick overview of AFI. Details of AFI APIs can be found in '[**Doxygen Documentation**](https://juniper.github.io/AFI/doxygen/html/index.html)'. 
 
 <br>
 <div style="text-align:center" align="center"><img src ="docs/resources/afi-components.png" width="150"/></div>
