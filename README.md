@@ -1,8 +1,8 @@
-##### Note: Use of this software is governed by an Apache 2.0 license, and can be found above in the “LICENSE” file.
+##### Note: Use of this software is governed by an Apache 2.0 license, and can be found in the “LICENSE” file.
 
 AFI (Advanced Forwarding Interface)
 ===================================
-Packet forwarding, at its core, is a sequence of operations executed by a packet forwarding engine (PFE). The packet forwarding engine, when given an input packet, performs this sequence of operations on the packet. Each of these operations can be represented by a node in a graph of potential packet forwarding operations. When packet is given to packet forwarding engine, it executes the operations in the graph that match the packet. Advanced Forwarding Interface (AFI) provides third party developers with ability to control and manage a section of forwarding path graph. 
+Packet forwarding, at its core, is a sequence of operations executed by a packet forwarding engine (PFE). The packet forwarding engine, when given an input packet, performs this sequence of operations on the packet. Each of these operations can be represented by a node in a graph of potential packet forwarding operations. When a packet is given to packet forwarding engine, it executes the operations in the graph that match the packet. AFI provides third party developers with the ability to control and manage a section of forwarding path graph. 
 
 AFI views a forwarding path as a collection of connected nodes in a hybrid graph. AFI provides clients with the ability to program a section of the forwarding path 
 via a small virtual container called a sandbox.  Using AFI APIs, AFI client can create and manage forwarding paths inside a forwarding sandbox. 
@@ -89,7 +89,7 @@ AFI Client Development Environment and Workflow
 <br>
 
 ### STEP 1. Install Docker engine on Linux host server
-You may want to refer to instructions provided on following page to install docker engine on the host sever  
+You may want to refer to instructions provided on the following page to install docker engine on the host server  
 [https://docs.docker.com/engine/installation/linux/ubuntulinux/](https://docs.docker.com/engine/installation/linux/ubuntulinux/)
 
 Note: Please follow the instructions provided on the above page for Ubuntu Trusty 14.04 (LTS)
@@ -127,7 +127,7 @@ docker build -f Dockerfile_afi -t afi-docker .
 
 <br>
 
-### STEP 5. Download 'VMX bundel' and copy it to AFI/tools/docker folder.
+### STEP 5. Download 'VMX bundle' and copy it to AFI/tools/docker folder.
 
 Please download "vMX AFI 1.0 Beta (vmx-bundle-17.2I20170329_2254_sksodhi.tgz)" 
 from Juniper vMX Eval download page 
@@ -137,7 +137,7 @@ and copy it to AFI/tools/docker/ directory.
 <br>
 
 ### STEP 6. Build docker container where VMX can also be run
-This step uses the container built in previous step and builds another docker 
+This step uses the container built in the previous step and builds another docker 
 container where provided VMX can also be run.
 ```
 cd AFI/tools/docker
@@ -163,7 +163,7 @@ docker run -i -t --privileged afi-vmx-docker
 cd /root
 ./scripts/setup_vmx.sh
 ```
-Please wait for following message to appear before proceeding with next step. <br>
+Please wait for the following message to appear before proceeding with next step. <br>
 "VMX Setup Complete!" <br>
 Please allow few minutes for VMX setup to complete. <br>
 After this step, following setup/environment (less the afi-client) will be ready.
@@ -171,7 +171,6 @@ After this step, following setup/environment (less the afi-client) will be ready
 <div style="text-align:center" align="center"> <img src="docs/resources/docker-vmx-setup.png" width="800"> </div>
 <br>
 <br>
-
 
 ### STEP 9. Download 'AFI APIs libs/headers package' and decompress it
 
