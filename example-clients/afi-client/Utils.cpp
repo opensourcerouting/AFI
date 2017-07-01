@@ -229,10 +229,10 @@ void
 pktTrace(const std::string &ctx, char *pkt, int pkt_len)
 {
 #define DATA_HEX_STR_LEN 10000
-	char      data_hex_str[DATA_HEX_STR_LEN];
+    char      data_hex_str[DATA_HEX_STR_LEN];
 
-	getHex(pkt, pkt_len, data_hex_str, DATA_HEX_STR_LEN, 16);
-	std::cout << std::endl << ctx << ": " << std::endl;
-	std::cout << data_hex_str << std::endl;
+    getHex(pkt, pkt_len, data_hex_str, DATA_HEX_STR_LEN, 16);
+    std::cout << std::endl << ctx << ": " << std::endl;
+    std::cout << data_hex_str << std::endl;
 }
 
