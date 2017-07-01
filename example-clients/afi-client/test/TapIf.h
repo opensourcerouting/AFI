@@ -24,7 +24,7 @@
 
 #include "../Utils.h"
 
-class TapIf 
+class TapIf
 {
 public:
     TapIf (const std::string &ifNameStr) {
