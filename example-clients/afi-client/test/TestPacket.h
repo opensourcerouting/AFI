@@ -111,8 +111,8 @@ public:
         pktData[ETH_HEADER_LEN - 2] = ((_etherType >> 8) & 0xFF);
         pktData[ETH_HEADER_LEN - 1] = ((_etherType) & 0xFF);
 
-		int pktDataLen = convertHexPktStrToPkt(_etherPayload, 
-				  							   &pktData[ETH_HEADER_LEN], 
+		int pktDataLen = convertHexPktStrToPkt(_etherPayload,
+				  							   &pktData[ETH_HEADER_LEN],
 											   pktDataBuffLen - ETH_HEADER_LEN);
 	    return (ETH_HEADER_LEN + pktDataLen);
 	}
@@ -121,7 +121,7 @@ private:
 	int  _srcMac[MAC_ADDR_LEN];
 	int  _dstMac[MAC_ADDR_LEN];
 
-	// 
+	//
 	// ETH_P_IP =  0x0800
 	//
 	//
@@ -132,22 +132,22 @@ private:
 
 class TestPacketLibrary {
 public:
-    //  
+    //
     // Test Packed Id.
-    //  
+    //
 	typedef enum {
         TestPackerIdInvalid = 0,
 		TEST_PKT_ID_IPV4_ECHO_REQ_TO_TAP1,
 		TEST_PKT_ID_IPV4_ECHO_REQ_TO_TAP2,
 		TEST_PKT_ID_IPV4_ROUTER_ICMP_ECHO_TO_TAP3,
-        TEST_PKT_ID_PUNT_ICMP_ECHO, 
+        TEST_PKT_ID_PUNT_ICMP_ECHO,
 		TEST_PKT_ID_IPV4_VLAN,
 		TEST_PKT_ID_MPLS_L2VLAN,
-        TestPackerIdMax, 
+        TestPackerIdMax,
 	} TestPacketId;
 
 
- 
+
     TestPacketLibrary() {
         buildTestPacketLibrary();
     }
@@ -175,7 +175,7 @@ private:
 
 
 //
-// Test Packet Library 
+// Test Packet Library
 //
 extern TestPacketLibrary testPacketLibrary;
 

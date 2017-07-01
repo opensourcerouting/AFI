@@ -80,7 +80,7 @@ int SendRawEth (const std::string &ifNameStr,
 	    perror("SIOCGIFINDEX");
 	}
 
-	// Get the MAC address of the interface to send on 
+	// Get the MAC address of the interface to send on
 	memset(&if_mac, 0, sizeof(struct ifreq));
 	strncpy(if_mac.ifr_name, ifName, IFNAMSIZ-1);
 	if (ioctl(sockfd, SIOCGIFHWADDR, &if_mac) < 0) {
@@ -108,8 +108,8 @@ int SendRawEth (const std::string &ifNameStr,
 
 	getRidOfSpacesFromString(ether_payload);
 
-	byte_count = convertHexStringToBinary(ether_payload, 
-                                          &sendbuf[tx_len], 
+	byte_count = convertHexStringToBinary(ether_payload,
+                                          &sendbuf[tx_len],
                                           (SEND_BUF_SIZE - tx_len));
 
 	tx_len += byte_count;
@@ -119,7 +119,7 @@ int SendRawEth (const std::string &ifNameStr,
 	// Address length
 	socket_address.sll_halen = ETH_ALEN;
 
-	// Destination MAC 
+	// Destination MAC
 	for (i = 0; i < MAC_ADDR_LEN; i++) {
 		socket_address.sll_addr[i] = dst_mac[i];
 	}
@@ -127,8 +127,8 @@ int SendRawEth (const std::string &ifNameStr,
 	std::cout << "Sending packet on interface " << ifName << "..." << std::endl;
     pktTrace("Raw socket send", sendbuf, tx_len);
 
-	// Send packet 
-	if (sendto(sockfd, sendbuf, tx_len, 0, 
+	// Send packet
+	if (sendto(sockfd, sendbuf, tx_len, 0,
 	    (struct sockaddr*)&socket_address, sizeof(struct sockaddr_ll)) < 0) {
 	    std::cout << "Error: Send failed!" << std::endl;
 		return -1;
