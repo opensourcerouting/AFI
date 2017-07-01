@@ -35,6 +35,9 @@ ARG VMX_BUNDLE
 #  docker run --name afi-vmx --privileged -i -t afi-vmx-docker /bin/bash
 #
 
+# RENATO
+RUN apt-add-repository -y ppa:brightbox/ruby-ng
+
 #
 # Packages needed for VMX
 #
@@ -60,7 +63,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  python-pip \
  python-dev \
  libxml2-dev \
- libxslt-dev
+ libxslt-dev \
+ nfs-common \
+ ruby2.4 \
+ ruby2.4-dev \
+ libpcap-dev \
+ libmnl-dev \
+ libyaml-cpp-dev \
+ valgrind \
+ iperf \
+ cgdb
+
+# RENATO
+RUN gem install packetgen
 
 #
 # Steps needed to run VMX successfully
