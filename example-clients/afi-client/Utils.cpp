@@ -51,10 +51,10 @@
 //
 
 void
-getHex (char *buf, 
-        int buf_len, 
-        char* hex_, 
-        int hex_len, 
+getHex (char *buf,
+        int buf_len,
+        char* hex_,
+        int hex_len,
         int num_col)
 {
     int i;
@@ -131,12 +131,12 @@ convertCharToInt (char input_char)
 //     target_buff Target buffer where binary string will be stored
 // @param[in]
 //     target_buff_len Target buffer length
-// @return  Nunber of bytes in output binary string 
+// @return  Nunber of bytes in output binary string
 //
 
 int
-convertHexStringToBinary (const char* source, 
-                          char* target_buff, 
+convertHexStringToBinary (const char* source,
+                          char* target_buff,
                           int   target_buff_len)
 {
   int num_bytes = 0;
@@ -161,7 +161,7 @@ convertHexStringToBinary (const char* source,
 // Removed spaces from a string
 //
 // @param[in]
-//     source String 
+//     source String
 // @return  void
 //
 
@@ -172,9 +172,9 @@ getRidOfSpacesFromString (char* source)
   char* j = source;
   while(*j != 0)
   {
-    *i = *j++; 
-    if(*i != ' ') { 
-        i++; 
+    *i = *j++;
+    if(*i != ' ') {
+        i++;
     }
   }
   *i = 0;
@@ -190,7 +190,7 @@ getRidOfSpacesFromString (char* source)
 // removed before converting to binary packet.
 //
 // @param[in]
-//     hex_pkt_str Packet Hex String - 
+//     hex_pkt_str Packet Hex String -
 // @param[Out]
 //     pkt_buff Target packet buffer where binary will be stored
 // @param[in]
@@ -199,8 +199,8 @@ getRidOfSpacesFromString (char* source)
 //
 
 int
-convertHexPktStrToPkt (char* hex_pkt_str, 
-                       char* pkt_buff, 
+convertHexPktStrToPkt (char* hex_pkt_str,
+                       char* pkt_buff,
                        int   pkt_buff_len)
 {
     int pkt_len;
