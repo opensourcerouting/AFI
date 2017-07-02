@@ -26,7 +26,7 @@ AFI_INCLUDE = ../../../$(AFI_VERSION)/include
 CXX = g++
 PROG = afi-client
 
-SRCS = Main.cpp AfiClient.cpp Utils.cpp
+SRCS = Main.cpp AfiClient.cpp TapIf.cpp Utils.cpp
 OBJS=$(subst .cc,.o, $(subst .cpp,.o, $(SRCS)))
 
 CXXFLAGS += -g -O0 -std=c++11

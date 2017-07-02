@@ -24,7 +24,7 @@
 #include "gtest/gtest.h"
 #include "TestPacket.h"
 #include "TestUtils.h"
-#include "TapIf.h"
+#include "../TapIf.h"
 #include "../AfiClient.h"
 #include <iostream>
 #include <iomanip>

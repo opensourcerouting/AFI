@@ -22,7 +22,7 @@
 #ifndef __TapIf__
 #define __TapIf__
 
-#include "../Utils.h"
+#include "Utils.h"
 
 class TapIf
 {
