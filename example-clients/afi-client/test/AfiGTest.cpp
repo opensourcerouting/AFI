@@ -377,11 +377,11 @@ TEST(AFI, CounterNode)
 //    Input Packet
 //
 
-TEST(AFI, DisacrdNode)
+TEST(AFI, DiscardNode)
 {
     int ret = 0;
     std::string tcName = "AFI";
-    std::string tName  = "DisacrdNode";
+    std::string tName  = "DiscardNode";
 
 
     AftNodeToken token  = aficlient->addDiscardNode();

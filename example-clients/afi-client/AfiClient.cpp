@@ -107,7 +107,6 @@ AfiClient::addRouteTable (const std::string &rttName,
                           AftNodeToken defaultTragetToken)
 {
     AftNodeToken        rttNodeToken;
-    AftNodeToken        discardNodeToken;
     AftInsertPtr        insert;
 
     //
@@ -150,14 +149,14 @@ AfiClient::addRouteTable (const std::string &rttName,
 // @param[in]
 //     prefix Route prefix
 // @param[in]
-//     routeTragetToken Route target token
+//     routeTargetToken Route target token
 // @return 0 - Success, -1 - Error
 //
 
 int
 AfiClient::addRoute (AftNodeToken       rttNodeToken,
                      const std::string &prefix,
-                     AftNodeToken       routeTragetToken)
+                     AftNodeToken       routeTargetToken)
 {
     AftInsertPtr        insert;
     AftNodeToken        outputPortToken;
@@ -187,13 +186,13 @@ AfiClient::addRoute (AftNodeToken       rttNodeToken,
     insert = AftInsert::create(_sandbox);
 
     std::cout <<"Adding route ";
-    std::cout << prefix << " ---> Node token " << routeTragetToken << std::endl;
+    std::cout << prefix << " ---> Node token " << routeTargetToken << std::endl;
 
     //
     // Create a route
     //
     AftEntryPtr entryPtr = AftEntry::create(rttNodeToken, key,
-                                            routeTragetToken);
+                                            routeTargetToken);
 
     //
     // Set the optional params for Entry
@@ -717,7 +716,7 @@ AfiClient::recvHostPathPacket(AftPacketPtr &pkt)
     std::cout << "pkt->dataSize(): " << pkt->dataSize() << " bytes" << std::endl;
 
 
-    std::cout << "Data: Received " << recvlen << "bytes" << std::endl;
+    std::cout << "Data: Received " << recvlen << " bytes" << std::endl;
 
     pktTrace("pkt data", (char *)(pkt->data()), pkt->dataSize());
 
@@ -1017,9 +1016,9 @@ AfiClient::handleCliCommand(std::string const & command_str)
             return;
         }
         AftNodeToken rttToken = std::strtoull(command_args.at(0).c_str(), NULL, 0);
-        AftNodeToken routeTragetToken = std::strtoull(command_args.at(2).c_str(), NULL, 0);
+        AftNodeToken routeTargetToken = std::strtoull(command_args.at(2).c_str(), NULL, 0);
 
-        addRoute(rttToken, command_args.at(1), routeTragetToken);
+        addRoute(rttToken, command_args.at(1), routeTargetToken);
 
     } else  if ((command.compare("pkt") == 0) ||
                 (command.compare("inject-l2-pkt") == 0)) {
