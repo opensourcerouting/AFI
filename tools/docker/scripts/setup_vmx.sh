@@ -54,7 +54,7 @@ if [ ! -d "$VMX_DIR" ]; then
 fi
 
 #
-# Chekc if VMX is already running
+# Check if VMX is already running
 #
 cd $VMX_DIR
 vmx_status=`./vmx.sh --status | grep "Check if vMX is running" | grep No | wc -l`
@@ -111,7 +111,7 @@ cd $VMX_DIR
 ./vmx.sh --start
 if [ $? -ne 0 ]; then
    log_error "VMX did not start successfully"
-  ./vmx.sh --stop
+   ./vmx.sh --stop
    log_prominent "VMX did not start successfully. Please resolve issue and try again"
    exit 1
 fi
