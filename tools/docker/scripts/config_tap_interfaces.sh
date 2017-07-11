@@ -30,10 +30,19 @@ me=`basename "$0"`
 NETNS_NAME="vrouter"
 MAC_ADDR_VMX="32:26:0A:2E:AA:FX"
 MAC_ADDR_PEER="32:26:0A:2E:CC:FX"
+
 IPV4_ADDR_VMX="103.30.X0.1"
 IPV4_ADDR_PEER="103.30.X0.3"
 IPV4_ADDR_LO="10.0.255.X"
 IPV4_PREFIXLEN="24"
+
+IPV6_ADDR_VMX="3000:X::1"
+IPV6_ADDR_PEER="3000:X::3"
+IPV6_ADDR_LO="4000::X"
+IPV6_PREFIXLEN="64"
+
+run_command "sysctl -w net.ipv6.conf.all.disable_ipv6=0"
+run_command "sysctl -w net.ipv6.conf.all.forwarding=1"
 
 COUNTER=0
 while [  $COUNTER -lt 8 ]; do
@@ -53,6 +62,9 @@ while [  $COUNTER -lt 8 ]; do
     ipv4_vmx=${IPV4_ADDR_VMX/X/$COUNTER}
     ipv4_peer=${IPV4_ADDR_PEER/X/$COUNTER}
     ipv4_lo=${IPV4_ADDR_LO/X/$COUNTER}
+    ipv6_vmx=${IPV6_ADDR_VMX/X/$COUNTER}
+    ipv6_peer=${IPV6_ADDR_PEER/X/$COUNTER}
+    ipv6_lo=${IPV6_ADDR_LO/X/$COUNTER}
 
     # Create new network namespace
     run_command "ip netns add $netns"
@@ -71,10 +83,15 @@ while [  $COUNTER -lt 8 ]; do
     run_command "ip link set tap$COUNTER address $mac_vmx"
     run_command "ip netns exec $netns ip link set veth address $mac_peer"
 
-    # Set IP addresses
+    # Set IPv4 addresses
     run_command "ip addr add $ipv4_vmx/$IPV4_PREFIXLEN dev tap$COUNTER"
     run_command "ip netns exec $netns ip addr add $ipv4_peer/$IPV4_PREFIXLEN dev veth"
     run_command "ip netns exec $netns ip addr add $ipv4_lo/32 dev lo"
+
+    # Set IPv6 addresses
+    run_command "ip -6 addr add $ipv6_vmx/$IPV6_PREFIXLEN dev tap$COUNTER"
+    run_command "ip netns exec $netns ip -6 addr add $ipv6_peer/$IPV6_PREFIXLEN dev veth"
+    run_command "ip netns exec $netns ip -6 addr add $ipv6_lo/128 dev lo"
 
     let COUNTER+=1
 done
