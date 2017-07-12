@@ -964,8 +964,8 @@ AfiClient::handleCliCommand(std::string const & command_str)
         std::cout << "Adding ether encap node" << std::endl;
         AftNodeToken nextToken = std::strtoull(command_args.at(4).c_str(),NULL,0);;
 
-        AftNodeToken nhEncapToken = addEtherEncapNode(command_args.at(0), 
-                                                      command_args.at(1), 
+        AftNodeToken nhEncapToken = addEtherEncapNode(command_args.at(1), 
+                                                      command_args.at(0), 
                                                       command_args.at(2), 
                                                       command_args.at(3), 
                                                       nextToken);
