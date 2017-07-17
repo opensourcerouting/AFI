@@ -42,7 +42,7 @@ me=`basename "$0"`
 function run_command {
     DATE_STR=`$DATE`
     echo "[$DATE_STR] [$me] Executing command \"$@\" ..."
-    $@
+    eval $@
     if [ $? -eq 0 ]
     then
       DATE_STR=`$DATE`
