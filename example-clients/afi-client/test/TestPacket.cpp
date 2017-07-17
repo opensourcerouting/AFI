@@ -32,9 +32,9 @@ void TestPacketLibrary::buildTestPacketLibrary(void)
     TestPacket *testPkt;
 
     //
-    // TEST_PKT_ID_IPV4_ECHO_REQ_TO_TAP1
+    // TEST_PKT_ID_IPV4_ECHO_REQ_TO_PEER1
     //
-    // Mac tap1 32:26:0a:2e:cc:f1
+    // Mac peer1 32:26:0a:2e:cc:f1
     // Src IP : 103.30.10.1
     // Dst IP : 103.30.10.3
     //
@@ -53,12 +53,12 @@ void TestPacketLibrary::buildTestPacketLibrary(void)
         "2627 2829 2a2b 2c2d 2e2f 3031 3233 3435"
         "3637");
 
-    _testPacketLibrary[TEST_PKT_ID_IPV4_ECHO_REQ_TO_TAP1] = testPkt;
+    _testPacketLibrary[TEST_PKT_ID_IPV4_ECHO_REQ_TO_PEER1] = testPkt;
 
     //
-    // TEST_PKT_ID_IPV4_ECHO_REQ_TO_TAP2
+    // TEST_PKT_ID_IPV4_ECHO_REQ_TO_PEER2
     //
-    // Mac tap2 7a:44:b9:85:3e:10
+    // Mac peer2 7a:44:b9:85:3e:10
     // Src IP : 103.30.80.1
     // Dst IP : 103.30.80.3
     testPkt = new TestPacket();
@@ -75,15 +75,15 @@ void TestPacketLibrary::buildTestPacketLibrary(void)
         "2627 2829 2a2b 2c2d 2e2f 3031 3233 3435"
         "3637");
 
-    _testPacketLibrary[TEST_PKT_ID_IPV4_ECHO_REQ_TO_TAP2] = testPkt;
+    _testPacketLibrary[TEST_PKT_ID_IPV4_ECHO_REQ_TO_PEER2] = testPkt;
 
 
-    // tap2 mac     : 32:26:0a:2e:cc:f2
+    // peer2 mac     : 32:26:0a:2e:cc:f2
     // ge-0/0/2 mac : 32:26:0a:2e:aa:f2
     //
-    // TEST_PKT_ID_IPV4_ROUTER_ICMP_ECHO_TO_TAP3
+    // TEST_PKT_ID_IPV4_ROUTER_ICMP_ECHO_TO_PEER3
     //
-    // tap3 mac : 7a:44:b9:85:3e:10
+    // peer3 mac : 7a:44:b9:85:3e:10
     //
     // Src IP : 103.30.20.2
     // Dst IP : 103.30.30.3
@@ -101,7 +101,7 @@ void TestPacketLibrary::buildTestPacketLibrary(void)
         "2627 2829 2a2b 2c2d 2e2f 3031 3233 3435"
         "3637");
 
-    _testPacketLibrary[TEST_PKT_ID_IPV4_ROUTER_ICMP_ECHO_TO_TAP3] = testPkt;
+    _testPacketLibrary[TEST_PKT_ID_IPV4_ROUTER_ICMP_ECHO_TO_PEER3] = testPkt;
 
 
     //
