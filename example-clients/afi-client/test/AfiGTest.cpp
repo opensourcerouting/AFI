@@ -893,7 +893,7 @@ tStartTsharkCapture (std::string &tcName,
 
         std::string ifPcapFile = tOutputDir + "/" + interface  + ".pcap";
         std::string ifstderrFile = tOutputDir + "/" + interface  + ".stderr";
-        std::string tsharkCmd = tsharkBinary + " -i " + interface +
+        std::string tsharkCmd = tsharkBinary + " -i " + interface + " -f 'not arp'" +
                              " -w " + ifPcapFile + " 2> " + ifstderrFile + " < /dev/null &";
 
         ret = system(tsharkCmd.c_str());
