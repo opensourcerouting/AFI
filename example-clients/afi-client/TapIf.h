@@ -22,38 +22,61 @@
 #ifndef __TapIf__
 #define __TapIf__
 
+#include <boost/thread.hpp>
+
+#include <linux/if_tun.h>
+
+#include "jnx/Aft.h"
 #include "Utils.h"
 
 class TapIf
 {
 public:
-    TapIf (const std::string &ifNameStr) {
-        strncpy(_ifName, ifNameStr.c_str(), IFNAMSIZ);
-        _ifName[IFNAMSIZ - 1] = '\0';
+    TapIf () {
+        _tapFd = -1;
     }
 
     ~TapIf () {
+        if (!initialized())
+            return;
+
+        _tapThread->join();
+        delete(_tapThread);
+        close(_tapFd);
     }
 
-    int init(void) {
+    int init(AftIndex portIndex, std::string ifName) {
         int tapFd;
-        int flags = IFF_TAP;
 
-        /* initialize tun/tap interface */
-        if ( (tapFd = tapAlloc(_ifName, flags | IFF_NO_PI)) < 0 ) {
-            std::cout << "Error connecting to tap interface " << _ifName << std::endl;
+        if (ifName.length() >= IFNAMSIZ) {
+            std::cout << "Tap interface name is too long"<< std::endl;
             return -1;
         }
+
+        /* initialize tun/tap interface */
+        if ((tapFd = tapAlloc(ifName, IFF_TAP | IFF_NO_PI)) < 0) {
+            std::cout << "Error connecting to tap interface " << ifName << std::endl;
+            return -1;
+        }
+
+        _ifName = ifName;
+        _portIndex = portIndex;
         _tapFd = tapFd;
+        _tapThread = new boost::thread(boost::bind(&TapIf::ifRead, this));
+
         return _tapFd;
     }
 
-    int tapAlloc(char *dev, int flags);
+    int tapAlloc(std::string ifName, int flags);
+    int initialized(void);
     int ifRead(void);
+    int ifWrite(int size, uint8_t *data);
 
 private:
-    char _ifName[IFNAMSIZ];
-    int  _tapFd;
+    std::string           _ifName;
+    AftIndex              _portIndex;
+    int                   _tapFd;
+    boost::thread	  *_tapThread;
 };
 
 #endif // __TapIf__

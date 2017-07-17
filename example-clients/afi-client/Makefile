@@ -43,7 +43,8 @@ LDLIBS = -lafi-transport \
 		 -lgrpc++_unsecure \
 		 -lgrpc_unsecure \
 		 -lboost_system \
-		 -lpthread
+		 -lpthread \
+        	 -lboost_thread
 
 all:    $(PROG)
 	@echo $(PROG) compilation success!
