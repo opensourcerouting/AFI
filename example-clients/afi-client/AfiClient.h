@@ -58,6 +58,7 @@
 
 #include "jnx/Aft.h"
 #include "jnx/AfiTransport.h"
+#include "TapIf.h"
 #include "Utils.h"
 
 #define BOOST_UDP boost::asio::ip::udp::udp
@@ -97,6 +98,8 @@ public:
                          resolver.resolve(query);
         _vmxtHostpathEndpoint = *iterator;
 
+        _puntingPorts.resize(8);
+
         //
         // Initialize transport connection to AFI server
         //
@@ -130,6 +133,12 @@ public:
     int addRoute(AftNodeToken      rttNodeToken,
                  const std::string &prefix,
                  AftNodeToken       routeTragetToken);
+
+    //
+    // Enable punting on a port
+    //
+    int enablePunting(AftIndex          portIndex,
+                      const std::string &tapIfname);
 
     //
     // Create Index table
@@ -218,6 +227,8 @@ private:
 
     AftSandboxPtr               _sandbox;
     AftTransportPtr             _transport;
+
+    std::vector<TapIf>          _puntingPorts;
 
     std::vector<std::string>    _commandHistory;
     bool                        _tracing;  //< True if debug tracing is enabled

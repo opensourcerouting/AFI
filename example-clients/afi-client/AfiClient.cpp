@@ -215,6 +215,34 @@ AfiClient::addRoute (AftNodeToken       rttNodeToken,
 
 //
 // @fn
+// enablePunting
+//
+// @brief
+// Enable punting on a port
+//
+// @param[in]
+//     portIndex Port Index
+// @param[in]
+//     tapIfname Name of the Linux tap interface
+// @return 0 - Success, -1 - Error
+//
+int
+AfiClient::enablePunting (AftIndex          portIndex,
+                          const std::string &tapIfname)
+{
+    if (_puntingPorts[portIndex].initialized()) {
+        std::cout << "Punting already enabled for port" << portIndex << std::endl;
+        return -1;
+    }
+
+    TapIf &tapIf = _puntingPorts[portIndex];
+    tapIf.init(portIndex, tapIfname);
+
+    return 0;
+}
+
+//
+// @fn
 // createIndexTable
 //
 // @brief
@@ -720,6 +748,10 @@ AfiClient::recvHostPathPacket(AftPacketPtr &pkt)
 
     pktTrace("pkt data", (char *)(pkt->data()), pkt->dataSize());
 
+    TapIf &tapIf = _puntingPorts[pkt->portIndex()];
+    if (tapIf.initialized())
+        tapIf.ifWrite(pkt->dataSize(), pkt->data());
+
     return 0;
 }
 
@@ -886,6 +918,7 @@ AfiClient::handleCliCommand(std::string const & command_str)
         std::cout << "\t add-label-decap <next-node-token>" << std::endl;
         std::cout << "\t get-output-port-token <ouput-port-index>" << std::endl;
         std::cout << "\t add-route <rtt-token> <prefix> <next-node-token>" << std::endl;
+        std::cout << "\t punt-to-linux <port-index> <linux-tap-ifname>" << std::endl;
         std::cout << "\t inject-l2-pkt <sandbox-index> <port-index>: Inject layer 2 packet" << std::endl;
         std::cout << "\t history " << std::endl;
         std::cout << "\t clear-history " << std::endl;
@@ -1019,6 +1052,17 @@ AfiClient::handleCliCommand(std::string const & command_str)
         AftNodeToken routeTargetToken = std::strtoull(command_args.at(2).c_str(), NULL, 0);
 
         addRoute(rttToken, command_args.at(1), routeTargetToken);
+
+    } else  if (command.compare("punt-to-linux") == 0) {
+        if (command_args.size() != 2) {
+            std::cout << "Please provide port index and name of the Linux tap interface" << std::endl;
+            std::cout << "Example: punt-to-linux 0 tap0" << std::endl;
+            return;
+        }
+        AftIndex      portIndex = std::strtoull(command_args.at(0).c_str(), NULL, 0);    // Port Index
+        std::string   tapIfname = command_args.at(1);                                    // Tap Ifname
+
+        enablePunting(portIndex, tapIfname);
 
     } else  if ((command.compare("pkt") == 0) ||
                 (command.compare("inject-l2-pkt") == 0)) {
