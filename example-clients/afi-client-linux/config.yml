@@ -1,0 +1,31 @@
+---
+# Netlink buffer size.
+netlink-buffer-size: 4194304
+
+# Enable the use of zebra's FPM interface to fetch route information.
+# If disabled, routes are fetched using Netlink.
+use-fpm-interface: true
+
+# JFI server address.
+afi-server-address: "128.0.0.16:50051"
+
+# JFI hostpath address.
+afi-hostpath-address: "128.0.0.16:9002"
+
+# Interfaces.
+interfaces:
+  - name: veth0
+    port: 0
+    tap: tap0
+
+  - name: veth1
+    port: 1
+    tap: tap1
+
+  - name: veth2
+    port: 2
+    tap: tap2
+
+  - name: veth3
+    port: 3
+    tap: tap3
