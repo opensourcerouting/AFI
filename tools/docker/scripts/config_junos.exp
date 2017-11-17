@@ -42,7 +42,7 @@ set timeout 20
 
 set wait_interval 60
 sleep $wait_interval
-puts "Sleeping for $wait_interval seconds ..."
+log_debug "Sleeping for $wait_interval seconds ..."
 
 expect "$vcp_prompt" { send "\r" }
 expect "$vcp_prompt" { send "cli\r" }
