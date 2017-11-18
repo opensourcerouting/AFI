@@ -40,11 +40,11 @@ set spawn_id [login_vcp_console]
 #
 set timeout 20
 
+expect "$vcp_prompt" { send "\r" }
 set wait_interval 60
 sleep $wait_interval
-log_debug "Sleeping for $wait_interval seconds ..."
-
-expect "$vcp_prompt" { send "\r" }
+puts "Sleeping for $wait_interval seconds ..."
+send "\r"
 expect "$vcp_prompt" { send "cli\r" }
 expect "$re_cli_prompt" { send "show version | no-more\r" }
 expect "$re_cli_prompt" { send "edit\r" }
