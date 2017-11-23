@@ -35,10 +35,18 @@
 #include <sys/types.h>
 
 #include "TapIf.h"
+#include "Utils.h"
 
 TapIf::TapIf(void)
+    : _ifName()
+    , _ifIndex()
+    , _macAddr()
+    , _portIndex()
+    , _outputIfName()
+    , _tapFd(-1)
+    , _tapThread()
+
 {
-	_tapFd = -1;
 }
 
 TapIf::~TapIf(void)
@@ -51,7 +59,8 @@ TapIf::~TapIf(void)
 	close(_tapFd);
 }
 
-int TapIf::init(AftIndex portIndex, std::string ifName, std::string outputIfName)
+int TapIf::init(AftIndex portIndex, std::string ifName,
+		std::string outputIfName)
 {
 	int tapFd;
 	uint8_t *macAddr;
@@ -123,41 +132,6 @@ int TapIf::tapAlloc(std::string ifName, int flags)
 	}
 
 	return fd;
-}
-
-//
-// @fn
-// tapAlloc
-//
-// @brief
-// get MAC address of the interface
-//
-// @param[in]
-//     dev Device name
-// @return  file descriptor
-//
-
-uint8_t *TapIf::getMacAddress(std::string ifName)
-{
-	static struct ifreq ifr;
-	int fd;
-
-	fd = socket(AF_INET, SOCK_DGRAM, 0);
-	if (fd < 0) {
-		warn("socket");
-		return NULL;
-	}
-
-	memset(&ifr, 0, sizeof(ifr));
-	strncpy(ifr.ifr_name, ifName.c_str(), IFNAMSIZ);
-	if (ioctl(fd, SIOCGIFHWADDR, &ifr) < 0) {
-		warn("ioctl");
-		close(fd);
-		return NULL;
-	}
-	close(fd);
-
-	return (uint8_t *)ifr.ifr_hwaddr.sa_data;
 }
 
 //

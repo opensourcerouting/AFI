@@ -26,7 +26,8 @@ AFI_INCLUDE = ../../../$(AFI_VERSION)/include
 CXX = g++
 PROG = afi-client-linux
 
-SRCS = Main.cpp AfiClient.cpp TapIf.cpp Netlink.cpp FpmServer.cpp FpmConn.cpp qpb.pb.cc fpm.pb.cc
+SRCS = Main.cpp AfiClient.cpp TapIf.cpp Netlink.cpp FpmServer.cpp FpmConn.cpp \
+       Utils.cpp qpb.pb.cc fpm.pb.cc
 OBJS=$(subst .cc,.o, $(subst .cpp,.o, $(SRCS)))
 
 CXXFLAGS += -g -O0 -std=c++11
@@ -41,7 +42,8 @@ LDLIBS = -lafi-transport \
 	 -lpthread \
        	 -lboost_thread \
        	 -lmnl \
-	 -lyaml-cpp
+	 -lyaml-cpp \
+	 -lreadline
 
 all:    $(PROG)
 	@echo $(PROG) compilation success!

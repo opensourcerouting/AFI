@@ -48,6 +48,8 @@ class Netlink
 	static int data_cb_route(const struct nlmsghdr *nlh, void *data);
 	static int data_neighbor_attr_cb(const struct nlattr *attr, void *data);
 	static int data_cb_neighbor(const struct nlmsghdr *nlh, void *data);
+	static int data_address_attr_cb(const struct nlattr *attr, void *data);
+	static int data_cb_address(const struct nlmsghdr *nlh, void *data);
 	static int data_cb(const struct nlmsghdr *nlh, void *data);
 };
 

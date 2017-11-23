@@ -158,9 +158,18 @@ int Netlink::data_cb_route(const struct nlmsghdr *nlh, void *data)
 	struct nlattr *tb[RTA_MAX + 1] = {};
 	struct rtmsg *rm = (struct rtmsg *)mnl_nlmsg_get_payload(nlh);
 
-	/* ignore connected routes (RTN_LOCAL) and blackhole routes */
-	if (rm->rtm_type != RTN_UNICAST && rm->rtm_type != RTN_UNSPEC)
+	/* ignore connected routes (RTN_LOCAL) */
+	switch (rm->rtm_type) {
+	case RTN_UNICAST:
+	case RTN_UNSPEC:
+	case RTN_BLACKHOLE:
+		break;
+	case RTN_LOCAL:
+	case RTN_UNREACHABLE:
+	case RTN_PROHIBIT:
+	default:
 		return MNL_CB_OK;
+	}
 
 	if (rm->rtm_table != RT_TABLE_MAIN && rm->rtm_table != RT_TABLE_LOCAL
 	    && rm->rtm_table != RT_TABLE_UNSPEC)
@@ -197,9 +206,14 @@ int Netlink::data_cb_route(const struct nlmsghdr *nlh, void *data)
 				*(struct in6_addr *)mnl_attr_get_payload(
 					tb[RTA_GATEWAY]));
 		break;
+	default:
+		errx(1, "%s: unknown address-family", __func__);
+		break;
 	}
 
 	route.prefixLen = rm->rtm_dst_len;
+	if (rm->rtm_type == RTN_BLACKHOLE)
+		route.blackhole = true;
 
 	AfiClient *afiClient = AfiClient::getInstance();
 	if (nlh->nlmsg_type == RTM_NEWROUTE)
@@ -253,6 +267,9 @@ int Netlink::data_cb_neighbor(const struct nlmsghdr *nlh, void *data)
 		neighbor.ipAddr.set(
 			*(struct in6_addr *)mnl_attr_get_payload(tb[NDA_DST]));
 		break;
+	default:
+		errx(1, "%s: unknown address-family", __func__);
+		break;
 	}
 
 	if (tb[NDA_LLADDR]
@@ -270,6 +287,65 @@ int Netlink::data_cb_neighbor(const struct nlmsghdr *nlh, void *data)
 	return MNL_CB_OK;
 }
 
+int Netlink::data_address_attr_cb(const struct nlattr *attr, void *data)
+{
+	const struct nlattr **tb = (const struct nlattr **)data;
+	int type = mnl_attr_get_type(attr);
+
+	/* skip unsupported attribute in user-space */
+	if (mnl_attr_type_valid(attr, IFA_MAX) < 0)
+		return MNL_CB_OK;
+
+	switch (type) {
+	case IFA_ADDRESS:
+		if (mnl_attr_validate(attr, MNL_TYPE_BINARY) < 0) {
+			warn("mnl_attr_validate");
+			return MNL_CB_ERROR;
+		}
+		break;
+	default:
+		break;
+	}
+	tb[type] = attr;
+	return MNL_CB_OK;
+}
+
+int Netlink::data_cb_address(const struct nlmsghdr *nlh, void *data)
+{
+	struct nlattr *tb[IFLA_MAX + 1] = {};
+	struct ifaddrmsg *ifa = (struct ifaddrmsg *)mnl_nlmsg_get_payload(nlh);
+
+	mnl_attr_parse(nlh, sizeof(*ifa), data_address_attr_cb, tb);
+	if (!tb[IFA_ADDRESS])
+		return MNL_CB_OK;
+
+	Route route;
+	route.nhDev = ifa->ifa_index;
+
+	void *addr = mnl_attr_get_payload(tb[IFA_ADDRESS]);
+	switch (ifa->ifa_family) {
+	case AF_INET:
+		route.prefix.set(*(struct in_addr *)addr);
+		route.prefixLen = 32;
+		break;
+	case AF_INET6:
+		route.prefix.set(*(struct in6_addr *)addr);
+		route.prefixLen = 128;
+		break;
+	default:
+		errx(1, "%s: unknown address-family", __func__);
+		break;
+	}
+
+	AfiClient *afiClient = AfiClient::getInstance();
+	if (nlh->nlmsg_type == RTM_NEWADDR)
+		afiClient->addRoute(route);
+	else
+		afiClient->delRoute(route);
+
+	return MNL_CB_OK;
+}
+
 int Netlink::data_cb(const struct nlmsghdr *nlh, void *data)
 {
 	switch (nlh->nlmsg_type) {
@@ -279,6 +355,9 @@ int Netlink::data_cb(const struct nlmsghdr *nlh, void *data)
 	case RTM_NEWNEIGH:
 	case RTM_DELNEIGH:
 		return data_cb_neighbor(nlh, data);
+	case RTM_NEWADDR:
+	case RTM_DELADDR:
+		return data_cb_address(nlh, data);
 	default:
 		return MNL_CB_OK;
 	}

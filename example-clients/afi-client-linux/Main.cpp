@@ -21,6 +21,9 @@
 
 #include "yaml-cpp/yaml.h"
 
+#include <readline/readline.h>
+#include <readline/history.h>
+
 #include "AfiClient.h"
 #include "Netlink.h"
 #include "FpmServer.h"
@@ -34,12 +37,12 @@ struct config_if {
 struct config {
 	unsigned int netlink_buffer_size;
 	bool use_fpm_interface;
-	std::string jfi_server_address;
-	std::string jfi_hostpath_address;
+	std::string afi_server_address;
+	std::string afi_hostpath_address;
 	std::vector<struct config_if> interfaces;
 };
 
-int readConfig(const std::string &path, struct config &config)
+static int readConfig(const std::string &path, struct config &config)
 {
 	YAML::Node yaml = YAML::LoadFile(path);
 
@@ -47,9 +50,9 @@ int readConfig(const std::string &path, struct config &config)
 		config.netlink_buffer_size =
 			yaml["netlink-buffer-size"].as<unsigned int>();
 		config.use_fpm_interface = yaml["use-fpm-interface"].as<bool>();
-		config.jfi_server_address =
+		config.afi_server_address =
 			yaml["afi-server-address"].as<std::string>();
-		config.jfi_hostpath_address =
+		config.afi_hostpath_address =
 			yaml["afi-hostpath-address"].as<std::string>();
 
 		const YAML::Node &interfaces = yaml["interfaces"];
@@ -72,15 +75,50 @@ int readConfig(const std::string &path, struct config &config)
 	return 0;
 }
 
+static void process_line(char *line)
+{
+	if (line == NULL || !strcmp(line, "quit") || !strcmp(line, "exit")) {
+		fprintf(stderr, "Exiting\n");
+		exit(0);
+	}
+
+	AfiClient *afiClient = AfiClient::getInstance();
+	if (!strcmp(line, "show routes"))
+		afiClient->printRoutes();
+	else if (!strcmp(line, "show neighbors"))
+		afiClient->printNeighbors();
+	else if (!strcmp(line, "show tokens"))
+		afiClient->printTokens();
+	else {
+		char *c = line;
+		while (*c++ != '\0') {
+			if (isspace((unsigned char)*line))
+				continue;
+			printf("%% unknown command: %s\n", line);
+			break;
+		}
+	}
+
+	add_history(line);
+	free(line);
+}
+
+static char *get_prompt(void)
+{
+	return (char *)"afi> ";
+}
+
 int main(int argc, char *argv[])
 {
 	struct config config;
 
+	openlog("afi-client", LOG_PID | LOG_NDELAY, LOG_DAEMON);
+
 	if (readConfig("config.yml", config) < 0)
 		errx(1, "Failed reading configuration file");
 
-	std::string afiServerAddr(config.jfi_server_address);
-	std::string afiHostpathAddr(config.jfi_hostpath_address);
+	std::string afiServerAddr(config.afi_server_address);
+	std::string afiHostpathAddr(config.afi_hostpath_address);
 	boost::asio::io_service io_service;
 	AfiClient afiClient(io_service, afiServerAddr, afiHostpathAddr,
 			    AFT_CLIENT_HOSTPATH_PORT);
@@ -93,13 +131,16 @@ int main(int argc, char *argv[])
 	Netlink netlink;
 	netlink.setRecvBuf(config.netlink_buffer_size);
 
-	unsigned int netlink_groups = RTMGRP_NEIGH;
+	unsigned int netlink_groups =
+		RTMGRP_NEIGH | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR;
 	if (!config.use_fpm_interface)
 		netlink_groups |= (RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_ROUTE);
 
 	netlink.bind(netlink_groups);
 	netlink.fetch(RTM_GETNEIGH, AF_INET);
 	netlink.fetch(RTM_GETNEIGH, AF_INET6);
+	netlink.fetch(RTM_GETADDR, AF_INET);
+	netlink.fetch(RTM_GETADDR, AF_INET6);
 	if (!config.use_fpm_interface) {
 		netlink.fetch(RTM_GETROUTE, AF_INET);
 		netlink.fetch(RTM_GETROUTE, AF_INET6);
@@ -111,9 +152,12 @@ int main(int argc, char *argv[])
 	netlink_fd = netlink.getFd();
 
 	std::vector<int> fds;
+	fds.push_back(fileno(stdin));
 	fds.push_back(netlink_fd);
 	if (config.use_fpm_interface)
 		fds.push_back(FpmServer::getFd());
+
+	rl_callback_handler_install(get_prompt(), process_line);
 
 	while (1) {
 		int ret;
@@ -138,7 +182,9 @@ int main(int argc, char *argv[])
 			if (!FD_ISSET(fd, &rd_set))
 				continue;
 
-			if (fd == netlink_fd)
+			if (fd == fileno(stdin))
+				rl_callback_read_char();
+			else if (fd == netlink_fd)
 				netlink.handle();
 			else if (fd == FpmServer::getFd())
 				newfd = FpmServer::accept();

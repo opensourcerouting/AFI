@@ -30,6 +30,7 @@
 #include <sys/socket.h>
 #include <thread>
 #include <unistd.h>
+#include <syslog.h>
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -50,7 +51,22 @@
 #include "Route.h"
 #include "Neighbor.h"
 
+struct AfiToken {
+	std::string type;
+	std::string description;
+	AftNodeToken next;
+};
+
+struct AfiRouteInfo {
+	AftInsertPtr insertPtr;
+	AftNodeToken outputToken;
+};
+
 #define BOOST_UDP boost::asio::ip::udp::udp
+typedef std::map<Route, struct AfiRouteInfo, RouteCompare>::iterator
+	routes_iterator;
+typedef std::map<Neighbor, AftNodeToken, NeighborCompare>::iterator
+	neighbors_iterator;
 
 //
 // @class   AfiClient
@@ -165,9 +181,34 @@ class AfiClient
 				       AftNodeToken nextToken);
 
 	//
+	// Add discard node
+	//
+	AftNodeToken addDiscardNode(void);
+
+	void addToken(AftNodeToken token, std::string type,
+		      std::string description, AftNodeToken next);
+
+	void delToken(AftNodeToken token);
+
+	//
+	// Find Tap interface by ifindex
+	//
+	TapIf *findTap(int ifindex);
+
+	//
 	// Handler hostpath packet from sandbox
 	//
 	int recvHostPathPacket(AftPacketPtr &pkt);
+
+	//
+	// Filter unwanted neighbor
+	//
+	bool filterNeighbor(Neighbor &neighbor);
+
+	//
+	// Install neighbor
+	//
+	int installNeighbor(const Neighbor &neighbor);
 
 	//
 	// Add or update neighbor
@@ -175,14 +216,19 @@ class AfiClient
 	void addNeighbor(Neighbor &neighbor);
 
 	//
+	// Uninstall neighbor
+	//
+	int uninstallNeighbor(neighbors_iterator it);
+
+	//
 	// Delete neighbor
 	//
 	void delNeighbor(Neighbor &neighbor);
 
 	//
-	// Print all neighbors
+	// Filter unwanted route
 	//
-	void printNeighbors(void);
+	bool filterRoute(const Route &route);
 
 	//
 	// Install route to a routing table
@@ -197,7 +243,7 @@ class AfiClient
 	//
 	// Uninstall route from the routing table
 	//
-	int uninstallRoute(Route &route);
+	int uninstallRoute(routes_iterator it);
 
 	//
 	// Remove route from the routing table
@@ -205,11 +251,24 @@ class AfiClient
 	int delRoute(Route &route);
 
 	//
-	// Print all routes
+	// Print routes
 	//
 	void printRoutes(void);
 
+	//
+	// Print neighbors
+	//
+	void printNeighbors(void);
+
+	//
+	// Print tokens
+	//
+	void printTokens(void);
+
       private:
+	//
+	// Singleton instance
+	//
 	static AfiClient *instance;
 
 	std::string _afiServerAddr;   //< AFI server address
@@ -219,12 +278,18 @@ class AfiClient
 	AftSandboxPtr _sandbox;
 	AftTransportPtr _transport;
 
+	//
+	// Special tokens
+	//
 	AftNodeToken _puntToken;
+	AftNodeToken _discardToken;
 	AftNodeToken _routeTableToken;
 
 	std::vector<TapIf> _puntingPorts;
-	std::map<Route, AftInsertPtr, RouteCompare> routes;
-	std::set<Neighbor, NeighborCompare> neighbors;
+
+	std::map<Route, AfiRouteInfo, RouteCompare> routes;
+	std::map<Neighbor, AftNodeToken, NeighborCompare> neighbors;
+	std::map<AftNodeToken, struct AfiToken> tokens;
 
 	void hostPathUDPSrvr(void); //< Hostpath UDP server
 };

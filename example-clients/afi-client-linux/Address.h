@@ -18,6 +18,7 @@
 #define _ADDRESS_H_
 
 #include <iostream>
+#include <sstream>
 
 #include <arpa/inet.h>
 #include <cstring>
@@ -89,6 +90,44 @@ class Address
 		}
 	}
 
+	bool isSpecial(void) const
+	{
+		uint32_t a;
+
+		switch (af) {
+		case AF_INET:
+			a = ntohl(u.v4.s_addr);
+			if (((a >> IN_CLASSA_NSHIFT) == IN_LOOPBACKNET)
+			    || IN_MULTICAST(a) || IN_BADCLASS(a))
+				return true;
+			break;
+		case AF_INET6:
+			if (IN6_IS_ADDR_LOOPBACK(&u.v6)
+			    || IN6_IS_ADDR_MULTICAST(&u.v6)
+			    || IN6_IS_ADDR_SITELOCAL(&u.v6)
+			    || IN6_IS_ADDR_V4MAPPED(&u.v6)
+			    || IN6_IS_ADDR_V4COMPAT(&u.v6))
+				return true;
+			break;
+		default:
+			errx(1, "%s: unknown address-family", __func__);
+		}
+
+		return false;
+	}
+
+	static const char *printAf(int af)
+	{
+		switch (af) {
+		case AF_INET:
+			return "ipv4";
+		case AF_INET6:
+			return "ipv6";
+		default:
+			errx(1, "%s: unknown address-family", __func__);
+		}
+	}
+
 	bool operator<(const Address &address) const
 	{
 		if (af < address.af)
@@ -120,6 +159,15 @@ class Address
 		return (*this < address == address < *this);
 	}
 
+	std::string str(void) const
+	{
+		std::stringstream ss;
+		char buf[64];
+
+		ss << inet_ntop(af, &u, buf, sizeof(buf));
+		return ss.str();
+	}
+
 	int af;
 	union {
 		struct in_addr v4;
@@ -130,8 +178,7 @@ class Address
 
 inline std::ostream &operator<<(std::ostream &os, const Address &address)
 {
-	char buf[64];
-	os << inet_ntop(address.af, &address.u, buf, sizeof(buf));
+	os << address.str();
 	return os;
 }
 

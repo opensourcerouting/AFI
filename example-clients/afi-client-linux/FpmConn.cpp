@@ -132,7 +132,9 @@ void FpmConn::processProtobufAddRoute(const fpm::AddRoute &fpm_route)
 	route.prefix.set(af, prefix.c_str(), prefix.length());
 	route.prefixLen = fpm_route.key().prefix().length();
 
-	if (fpm_route.nexthops().size() > 0) {
+	if (fpm_route.route_type() == fpm::BLACKHOLE)
+		route.blackhole = true;
+	else if (fpm_route.nexthops().size() > 0) {
 		fpm::Nexthop fpm_nexthop = fpm_route.nexthops(0);
 
 		if (fpm_nexthop.has_if_id())

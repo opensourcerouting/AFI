@@ -54,8 +54,6 @@ class TapIf
       private:
 	int tapAlloc(std::string ifName, int flags);
 
-	uint8_t *getMacAddress(std::string);
-
 	int ifRead(void);
 
 	std::string _ifName;

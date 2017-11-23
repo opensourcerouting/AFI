@@ -18,6 +18,9 @@
 #define _ROUTE_H_
 
 #include <iostream>
+#include <sstream>
+
+#include <net/if.h>
 
 #include "Address.h"
 
@@ -27,6 +30,7 @@ class Route
 	Route(void)
 	    : prefix()
 	    , prefixLen()
+	    , blackhole()
 	    , nhAddr()
 	    , nhDev()
 	{
@@ -49,7 +53,12 @@ class Route
 		if (nhAddr > route.nhAddr)
 			return false;
 
-		return nhDev < route.nhDev;
+		if (nhDev < route.nhDev)
+			return true;
+		if (nhDev > route.nhDev)
+			return false;
+
+		return blackhole < route.blackhole;
 	}
 
 	bool operator>(const Route &route) const
@@ -62,8 +71,24 @@ class Route
 		return (*this < route == route < *this);
 	}
 
+	std::string str(void) const
+	{
+		std::stringstream ss;
+		char ifname[IFNAMSIZ];
+
+		ss << prefix << "/" << std::dec << prefixLen;
+		if (blackhole)
+			ss << " blackhole";
+		if (nhDev)
+			ss << " interface " << if_indextoname(nhDev, ifname);
+		if (nhAddr.isSet())
+			ss << " via " << nhAddr;
+		return ss.str();
+	}
+
 	Address prefix;
 	uint32_t prefixLen;
+	bool blackhole;
 	Address nhAddr;
 	int nhDev;
 };
@@ -82,11 +107,7 @@ struct RouteCompare {
 
 inline std::ostream &operator<<(std::ostream &os, const Route &route)
 {
-	os << route.prefix << "/" << route.prefixLen;
-	if (route.nhDev)
-		os << " dev " << route.nhDev;
-	if (route.nhAddr.isSet())
-		os << " via " << route.nhAddr;
+	os << route.str();
 	return os;
 }
 

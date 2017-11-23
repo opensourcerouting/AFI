@@ -21,9 +21,11 @@
 #include <sstream>
 #include <iomanip>
 
+#include <net/if.h>
 #include <linux/if_ether.h>
 
 #include "Address.h"
+#include "Utils.h"
 
 class Neighbor
 {
@@ -32,20 +34,6 @@ class Neighbor
 	    : ipAddr()
 	    , macAddr()
 	    , ifIndex(){};
-
-	std::string printMacAddress(void) const
-	{
-		std::stringstream output;
-
-		for (int i = 0; i < ETH_ALEN; i++) {
-			output << std::setw(2) << std::setfill('0') << std::hex;
-			output << static_cast<unsigned int>(macAddr[i]);
-			if (i + 1 != ETH_ALEN)
-				output << ":";
-		}
-
-		return output.str();
-	}
 
 	bool operator<(const Neighbor &neighbor) const
 	{
@@ -73,6 +61,16 @@ class Neighbor
 		return (*this < neighbor == neighbor < *this);
 	}
 
+	std::string str(void) const
+	{
+		std::stringstream ss;
+		char ifname[IFNAMSIZ];
+
+		ss << "ip " << ipAddr << " lladdr " << printMacAddress(macAddr);
+		ss << " interface " << if_indextoname(ifIndex, ifname);
+		return ss.str();
+	}
+
 	Address ipAddr;
 	uint8_t macAddr[ETH_ALEN];
 	int ifIndex;
@@ -87,9 +85,7 @@ struct NeighborCompare {
 
 inline std::ostream &operator<<(std::ostream &os, const Neighbor &neighbor)
 {
-	os << "ip " << neighbor.ipAddr << " lladdr "
-	   << neighbor.printMacAddress();
-	os << " ifindex " << std::dec << neighbor.ifIndex;
+	os << neighbor.str();
 	return os;
 }
 

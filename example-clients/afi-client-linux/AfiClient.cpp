@@ -15,17 +15,59 @@
 //
 
 #include "AfiClient.h"
+#include "Utils.h"
 
 AfiClient *AfiClient::instance = NULL;
 
 int AfiClient::setup(void)
 {
+	AftPortEntryPtr port;
+	std::stringstream description;
+
 	openSandbox("green", 8);
 	getSandboxPtr()->outputPortByName("punt", _puntToken);
 
+	//
+	// Save port tokens
+	//
+	AftPortTablePtr inputPorts = _sandbox->inputPortTable();
+	for (AftIndex i = 0; i < (inputPorts->maxIndex() - 1); i++) {
+		inputPorts->portForIndex(i, port);
+		assert(port != nullptr);
+		description.str("");
+		description << "port " << i << ", input";
+		addToken(port->nodeToken(), "port", description.str(), 0);
+	}
+	AftPortTablePtr outputPorts = _sandbox->outputPortTable();
+	for (AftIndex i = 0; i < (outputPorts->maxIndex()); i++) {
+		outputPorts->portForIndex(i, port);
+		assert(port != nullptr);
+
+		if (i < (outputPorts->maxIndex() - 1)) {
+			description.str("");
+			description << "port " << i << ", output";
+			addToken(port->nodeToken(), "port", description.str(),
+				 0);
+		} else
+			addToken(port->nodeToken(), "punt",
+				 "punt to AFI client", 0);
+	}
+
+	//
+	// Add global routing table
+	//
+
 	_routeTableToken = addRouteTable("routeTable", _puntToken);
 
-	// XXX unfortunately this is necessary due to a bug in JFI
+	//
+	// Add single discard node for blackhole routes
+	//
+	_discardToken = addDiscardNode();
+
+	//
+	// Add default routes pointing to the punt token.
+	// This is necessary due to a bug in AFI.
+	//
 	struct in_addr defaultRouteV4 = {0};
 	struct in6_addr defaultRouteV6 = {0};
 	Route route;
@@ -123,6 +165,12 @@ AftNodeToken AfiClient::addRouteTable(const std::string &rttName,
 	//
 	_sandbox->send(insert);
 
+	//
+	// Save installed token
+	//
+	addToken(rttNodeToken, "routing-table", "routing table - default VRF",
+		 0);
+
 	return rttNodeToken;
 }
 
@@ -143,7 +191,18 @@ AftNodeToken AfiClient::addRouteTable(const std::string &rttName,
 int AfiClient::setInputPortNextNode(AftIndex inputPortIndex,
 				    AftNodeToken nextToken)
 {
+	AftPortEntryPtr port;
+
 	_sandbox->setInputPortByIndex(inputPortIndex, nextToken);
+
+	//
+	// Update port token
+	//
+	AftPortTablePtr inputPorts = _sandbox->inputPortTable();
+	inputPorts->portForIndex(inputPortIndex, port);
+	assert(port != nullptr);
+	tokens[port->nodeToken()].next = nextToken;
+
 	return 0;
 }
 
@@ -232,6 +291,46 @@ AftNodeToken AfiClient::addEtherEncapNode(const AftDataBytes &dst_mac,
 
 //
 // @fn
+// addDiscardNode
+//
+// @brief
+// Add discard node
+//
+// @param[in] void
+// @return Discard node token
+//
+
+AftNodeToken AfiClient::addDiscardNode(void)
+{
+	AftNodeToken discardNodeToken;
+	AftInsertPtr insert;
+
+	//
+	// Allocate an insert context
+	//
+	insert = AftInsert::create(_sandbox);
+
+	//
+	// Create aft discard node
+	//
+	AftNodePtr discard = AftDiscard::create();
+
+	//
+	// Send all the nodes to the sandbox
+	//
+	discardNodeToken = insert->push(discard, "Discard");
+	_sandbox->send(insert);
+
+	//
+	// Save installed token
+	//
+	addToken(discardNodeToken, "discard", "discard (drop) packets", 0);
+
+	return discardNodeToken;
+}
+
+//
+// @fn
 // recvHostPathPacket
 //
 // @brief
@@ -266,6 +365,42 @@ int AfiClient::recvHostPathPacket(AftPacketPtr &pkt)
 	return 0;
 }
 
+void AfiClient::addToken(AftNodeToken token, std::string type,
+			 std::string description, AftNodeToken next)
+{
+	struct AfiToken nodeToken;
+	nodeToken.type = type;
+	nodeToken.description = description;
+	nodeToken.next = next;
+
+	tokens[token] = nodeToken;
+}
+
+void AfiClient::delToken(AftNodeToken token)
+{
+	tokens.erase(token);
+}
+
+TapIf *AfiClient::findTap(int ifindex)
+{
+	auto it = find_if(
+		_puntingPorts.begin(), _puntingPorts.end(),
+		[&](const TapIf &t) -> bool { return t.ifIndex() == ifindex; });
+	if (it == std::end(_puntingPorts))
+		return NULL;
+	return &(*it);
+}
+
+bool AfiClient::filterNeighbor(Neighbor &neighbor)
+{
+	if (neighbor.ipAddr.isSpecial())
+		return true;
+	if (!findTap(neighbor.ifIndex))
+		return true;
+
+	return false;
+}
+
 //
 // @fn
 // addNeighbor
@@ -280,18 +415,21 @@ int AfiClient::recvHostPathPacket(AftPacketPtr &pkt)
 
 void AfiClient::addNeighbor(Neighbor &neighbor)
 {
+	if (filterNeighbor(neighbor))
+		return;
+
 	auto old = neighbors.find(neighbor);
 	if (old != neighbors.end()) {
 		// Ignore message if neighbor exists and didn't change
-		if (*old == neighbor)
+		if (old->first == neighbor)
 			return;
 
-		std::cout << "[netlink-neighbor] update: " << neighbor << "\n";
-		neighbors.erase(neighbor);
+		syslog(LOG_INFO, "[neighbor] update: %s",
+		       neighbor.str().c_str());
 	} else
-		std::cout << "[netlink-neighbor] add: " << neighbor << "\n";
+		syslog(LOG_INFO, "[neighbor] add: %s", neighbor.str().c_str());
 
-	neighbors.insert(neighbor);
+	installNeighbor(neighbor);
 
 	for (auto it = routes.begin(); it != routes.end(); ++it) {
 		Route route = it->first;
@@ -314,34 +452,164 @@ void AfiClient::addNeighbor(Neighbor &neighbor)
 
 void AfiClient::delNeighbor(Neighbor &neighbor)
 {
-	std::cout << "[netlink-neighbor] del: " << neighbor << "\n";
-	neighbors.erase(neighbor);
+	if (filterNeighbor(neighbor))
+		return;
+
+	auto it = neighbors.find(neighbor);
+	if (it == neighbors.end())
+		return;
+
+	syslog(LOG_INFO, "[neighbor] del: %s", neighbor.str().c_str());
 
 	for (auto it = routes.begin(); it != routes.end(); ++it) {
 		Route route = it->first;
 		if (route.nhAddr == neighbor.ipAddr)
-			uninstallRoute(route);
+			uninstallRoute(it);
 	}
+
+	uninstallNeighbor(it);
+	neighbors.erase(neighbor);
+}
+
+int AfiClient::installNeighbor(const Neighbor &neighbor)
+{
+	//
+	// Find output interface.
+	//
+	TapIf *tap = findTap(neighbor.ifIndex);
+	AftIndex outputPortIndex = tap->portIndex();
+	AftNodeToken outputPortToken = getOuputPortToken(outputPortIndex);
+
+	//
+	// Get source and destination MAC addresses.
+	//
+	AftDataBytes src_mac(tap->macAddr(), tap->macAddr() + ETH_ALEN);
+	AftDataBytes dst_mac(neighbor.macAddr, neighbor.macAddr + ETH_ALEN);
+
+	//
+	// Add AftEncap node.
+	//
+	AftNodeToken encapToken =
+		addEtherEncapNode(dst_mac, src_mac, outputPortToken);
+	neighbors[neighbor] = encapToken;
+
+	//
+	// Save installed token
+	//
+	std::stringstream description;
+	description << "src " << printMacAddress(tap->macAddr());
+	description << ", dst " << printMacAddress(neighbor.macAddr);
+	addToken(encapToken, "encap", description.str(), outputPortToken);
+
+	return 0;
+}
+
+int AfiClient::uninstallNeighbor(neighbors_iterator it)
+{
+	AftNodeToken encapToken = it->second;
+
+	//
+	// Delete saved token
+	//
+	delToken(encapToken);
+
+	//
+	// Send delete operation to the sandbox
+	//
+	AftRemovePtr remove = AftRemove::create();
+	remove->push(encapToken);
+	_sandbox->send(remove);
+
+	return 0;
+}
+
+bool AfiClient::filterRoute(const Route &route)
+{
+	//
+	// Filter special routes
+	//
+	if (route.prefix.isSpecial())
+		return true;
+
+	//
+	// Filter link-local routes
+	//
+	if (route.prefix.af == AF_INET6
+	    && IN6_IS_ADDR_LINKLOCAL(&route.prefix.u.v6))
+		return true;
+
+	//
+	// Accept blackhole routes
+	//
+	if (route.blackhole)
+		return false;
+
+	//
+	// Filter routes whose nexthop interface is not a tap interface
+	//
+	if (!findTap(route.nhDev))
+		return true;
+
+	return false;
 }
 
 //
 // @fn
-// printNeighbors
+// addRoute
 //
 // @brief
-// Display existing neighbors
+// Add or update route
 //
-// @param[in] void
-// @return void
+// @param[in]
+//     route Route
+// @return 0 - Success, -1 - Error
 //
 
-void AfiClient::printNeighbors(void)
+int AfiClient::addRoute(const Route &route)
 {
-	for (std::set<Neighbor>::iterator it = neighbors.begin();
-	     it != neighbors.end(); ++it) {
-		Neighbor nbr = *it;
-		std::cout << "neighbor: " << nbr << std::endl;
-	}
+	if (filterRoute(route))
+		return -1;
+
+	auto old = routes.find(route);
+	if (old != routes.end()) {
+		// Ignore message if route exists and didn't change
+		if (old->first == route)
+			return 0;
+
+		syslog(LOG_INFO, "[route] update: %s", route.str().c_str());
+	} else
+		syslog(LOG_INFO, "[route] add: %s", route.str().c_str());
+
+	return installRoute(route);
+}
+
+//
+// @fn
+// delRoute
+//
+// @brief
+// Delete route from the routing table
+//
+// @param[in]
+//     route Route
+// @return 0 - Success, -1 - Error
+//
+
+int AfiClient::delRoute(Route &route)
+{
+	if (filterRoute(route))
+		return -1;
+
+	auto it = routes.find(route);
+	if (it == routes.end())
+		return -1;
+
+	syslog(LOG_INFO, "[route] del: %s", route.str().c_str());
+
+	uninstallRoute(it);
+	routes.erase(route);
+
+	return 0;
 }
 
 //
@@ -360,37 +628,23 @@ int AfiClient::installRoute(const Route &route)
 {
 	AftNodeToken routeTargetToken;
 
-	auto it = find_if(_puntingPorts.begin(), _puntingPorts.end(),
-			  [&](const TapIf &t) -> bool {
-				  return t.ifIndex() == route.nhDev;
-			  });
-
 	//
 	// Routes that don't have a nexthop address can't be installed in the
 	// fast-path because ARP is required to resolve MAC addresses on a
 	// per-packet basis.
 	//
-	if (!route.nhAddr.isSet())
+	if (route.blackhole)
+		routeTargetToken = _discardToken;
+	else if (!route.nhAddr.isSet())
 		routeTargetToken = _puntToken;
 	else {
-		AftNodeToken outputPortToken;
-		AftNodeToken nhEncapToken;
-		AftIndex outputPortIndex = it->portIndex();
-		getSandboxPtr()->outputPortByIndex(outputPortIndex,
-						   outputPortToken);
-
 		Neighbor n;
 		n.ipAddr = route.nhAddr;
 		auto neighbor = neighbors.find(n);
 		if (neighbor == neighbors.end())
 			return -1;
 
-		AftDataBytes src_mac(it->macAddr(), it->macAddr() + ETH_ALEN);
-		AftDataBytes dst_mac(neighbor->macAddr,
-				     neighbor->macAddr + ETH_ALEN);
-		nhEncapToken =
-			addEtherEncapNode(dst_mac, src_mac, outputPortToken);
-		routeTargetToken = nhEncapToken;
+		routeTargetToken = neighbor->second;
 	}
 
 	int prefix_len;
@@ -439,49 +693,15 @@ int AfiClient::installRoute(const Route &route)
 	// Send all the nodes to the sandbox
 	//
 	_sandbox->send(insert);
-	routes.find(route)->second = insert;
 
-	std::cout << "[afi-route] install: " << route << std::endl;
+	struct AfiRouteInfo afiRouteInfo;
+	afiRouteInfo.insertPtr = insert;
+	afiRouteInfo.outputToken = routeTargetToken;
+	routes[route] = afiRouteInfo;
+
+	syslog(LOG_INFO, "[route] install: %s", route.str().c_str());
 
 	return 0;
-}
-
-//
-// @fn
-// addRoute
-//
-// @brief
-// Add or update route
-//
-// @param[in]
-//     route Route
-// @return 0 - Success, -1 - Error
-//
-
-int AfiClient::addRoute(const Route &route)
-{
-	auto it = find_if(_puntingPorts.begin(), _puntingPorts.end(),
-			  [&](const TapIf &t) -> bool {
-				  return t.ifIndex() == route.nhDev;
-			  });
-	// nexthop interface not found
-	if (it == std::end(_puntingPorts))
-		return -1;
-
-	auto old = routes.find(route);
-	if (old != routes.end()) {
-		// Ignore message if route exists and didn't change
-		if (old->first == route)
-			return 0;
-
-		std::cout << "[netlink-route] update: " << route << "\n";
-	} else
-		std::cout << "[netlink-route] add: " << route << "\n";
-
-	AftInsertPtr node = NULL;
-	routes[route] = node;
-
-	return installRoute(route);
 }
 
 //
@@ -496,36 +716,17 @@ int AfiClient::addRoute(const Route &route)
 // @return 0 - Success, -1 - Error
 //
 
-int AfiClient::uninstallRoute(Route &route)
+int AfiClient::uninstallRoute(routes_iterator it)
 {
-	std::cout << "[afi-route] uninstall: " << route << std::endl;
+	syslog(LOG_INFO, "[route] uninstall: %s", it->first.str().c_str());
 
-	AftInsertPtr node = routes.find(route)->second;
-	AftRemovePtr remove = AftRemove::create(node);
+	struct AfiRouteInfo afiRouteInfo = it->second;
+
+	//
+	// Send delete operation to the sandbox
+	//
+	AftRemovePtr remove = AftRemove::create(afiRouteInfo.insertPtr);
 	_sandbox->send(remove);
-
-	return 0;
-}
-
-//
-// @fn
-// delRoute
-//
-// @brief
-// Delete route from the routing table
-//
-// @param[in]
-//     route Route
-// @return 0 - Success, -1 - Error
-//
-
-int AfiClient::delRoute(Route &route)
-{
-	std::cout << "[netlink-route] del: " << route << std::endl;
-
-	uninstallRoute(route);
-
-	routes.erase(route);
 
 	return 0;
 }
@@ -535,7 +736,7 @@ int AfiClient::delRoute(Route &route)
 // printRoutes
 //
 // @brief
-// Display existing routes
+// Display routes
 //
 // @param[in] void
 // @return void
@@ -543,10 +744,117 @@ int AfiClient::delRoute(Route &route)
 
 void AfiClient::printRoutes(void)
 {
-	for (std::map<Route, AftInsertPtr>::iterator it = routes.begin();
-	     it != routes.end(); ++it) {
+	char ifname[IFNAMSIZ];
+
+	std::cout << std::left;
+	std::cout << std::setw(5) << "AF";
+	std::cout << std::setw(21) << "Prefix";
+	std::cout << std::setw(16) << "Interface";
+	std::cout << std::setw(27) << "Nexthop";
+	std::cout << "Output Token\n";
+	for (auto it = routes.begin(); it != routes.end(); ++it) {
 		Route route = it->first;
-		std::cout << "route: " << route << std::endl;
+		struct AfiRouteInfo afiRouteInfo = it->second;
+		;
+
+		std::stringstream prefix;
+		prefix << route.prefix << "/" << route.prefixLen;
+
+		std::cout << std::left;
+		std::cout << std::setw(5) << Address::printAf(route.prefix.af);
+		std::cout << std::setw(21) << prefix.str();
+
+		std::cout << std::setw(16);
+		if (route.nhDev)
+			std::cout << if_indextoname(route.nhDev, ifname);
+		else
+			std::cout << "-";
+
+		std::cout << std::setw(27);
+		if (route.nhAddr.isSet())
+			std::cout << route.nhAddr;
+		else
+			std::cout << "-";
+
+		if (afiRouteInfo.outputToken != 0)
+			std::cout << std::dec << afiRouteInfo.outputToken;
+		else
+			std::cout << "-";
+		std::cout << "\n";
+	}
+}
+
+//
+// @fn
+// printNeighbors
+//
+// @brief
+// Display neighbors
+//
+// @param[in] void
+// @return void
+//
+
+void AfiClient::printNeighbors(void)
+{
+	char ifname[IFNAMSIZ];
+
+	std::cout << std::left;
+	std::cout << std::setw(5) << "AF";
+	std::cout << std::setw(27) << "IP Address";
+	std::cout << std::setw(16) << "Interface";
+	std::cout << std::setw(21) << "MAC Address";
+	std::cout << "Encap Token\n";
+	for (auto it = neighbors.begin(); it != neighbors.end(); ++it) {
+		Neighbor neighbor = it->first;
+		AftNodeToken encapToken = it->second;
+
+		std::cout << std::left;
+		std::cout << std::setw(5)
+			  << Address::printAf(neighbor.ipAddr.af);
+		std::cout << std::setw(27) << neighbor.ipAddr;
+		std::cout << std::setw(16)
+			  << if_indextoname(neighbor.ifIndex, ifname);
+		std::cout << std::setw(21) << printMacAddress(neighbor.macAddr);
+		if (encapToken)
+			std::cout << std::dec << encapToken;
+		else
+			std::cout << "-";
+		std::cout << "\n";
+	}
+}
+
+//
+// @fn
+// printTokens
+//
+// @brief
+// Display tokens
+//
+// @param[in] void
+// @return void
+//
+
+void AfiClient::printTokens(void)
+{
+	std::cout << std::left;
+	std::cout << std::setw(8) << "Token";
+	std::cout << std::setw(15) << "Type";
+	std::cout << std::setw(46) << "Description";
+	std::cout << "Next Token\n";
+	for (auto it = tokens.begin(); it != tokens.end(); ++it) {
+		AftNodeToken token = it->first;
+		struct AfiToken tokenInfo = it->second;
+
+		std::cout << std::left;
+		std::cout << std::setw(8) << std::dec << token;
+		std::cout << std::setw(15) << tokenInfo.type;
+		std::cout << std::setw(46) << tokenInfo.description;
+		if (tokenInfo.next == 0)
+			std::cout << "-";
+		else
+			std::cout << tokenInfo.next;
+		std::cout << "\n";
 	}
 }
 
